@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,14 +18,10 @@ func healthHandler(c echo.Context) error {
 }
 
 func main() {
-
-	fmt.Println("Please use server.go for main file")
-	fmt.Println("start at port:", os.Getenv("PORT"))
-
 	e := echo.New()
 	e.Logger.SetLevel(log.INFO)
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
-		if username == "Patchara" || password == "Password" {
+		if username == "Patchara" && password == "Password" {
 			return true, nil
 		}
 		return false, nil
