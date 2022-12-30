@@ -34,6 +34,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	e.GET("/health", healthHandler)
+	e.POST("/expenses", expenses.CreateExpensesHandler)
 
 	go func() {
 		if err := e.Start(":2565"); err != nil && err != http.ErrServerClosed {
