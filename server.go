@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PatcharaKL/assessment/rest/expenses"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -18,6 +19,8 @@ func healthHandler(c echo.Context) error {
 }
 
 func main() {
+	expenses.InitDB()
+
 	e := echo.New()
 	e.Logger.SetLevel(log.INFO)
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
