@@ -24,9 +24,12 @@ func (h *handler) GetExpenseByIdHandler(c echo.Context) error {
 func (h *handler) GetExpensesHandler(c echo.Context) error {
 	stmt, err := h.DB.Prepare("SELECT * FROM expenses")
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all users statement:" + err.Error()})
+		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses statement:" + err.Error()})
 	}
 	rows, err := stmt.Query()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: "can't query expenses: " + err.Error()})
+	}
 	expenses := []Expenses{}
 	for rows.Next() {
 		e := Expenses{}
