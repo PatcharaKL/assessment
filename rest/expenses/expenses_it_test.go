@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package expenses
 
 import (
@@ -43,7 +40,7 @@ func TestCreateExpenses(t *testing.T) {
 	assert.Equal(t, 79, e.Amount)
 }
 
-func TestGetExpensesByID(t *testing.T) {
+func TestGetExpenseByID(t *testing.T) {
 	var e Expenses
 
 	res := request(http.MethodGet, uri("expenses/1"), strings.NewReader(""))
@@ -54,6 +51,18 @@ func TestGetExpensesByID(t *testing.T) {
 	assert.Equal(t, 1, e.ID)
 	assert.Equal(t, "strawberry smoothie", e.Title)
 	assert.Equal(t, 79, e.Amount)
+}
+
+func TestGetExpenses(t *testing.T) {
+	var e []Expenses
+
+	res := request(http.MethodGet, uri("expenses"), strings.NewReader(""))
+	err := res.Decode(&e)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, 1, e[0].ID)
+	assert.Equal(t, "strawberry smoothie", e[0].Title)
+	assert.Equal(t, 79, e[0].Amount)
 }
 
 func TestUpdateExpenses(t *testing.T) {
@@ -121,7 +130,8 @@ func setupServer() {
 		h := NewApplication(db)
 
 		e.POST("/expenses", h.CreateExpensesHandler)
-		e.GET("/expenses/:id", h.GetExpensesByIdHandler)
+		e.GET("/expenses", h.GetExpensesHandler)
+		e.GET("/expenses/:id", h.GetExpenseByIdHandler)
 		e.PUT("/expenses/:id", h.UpdateExpensesHandler)
 		e.Start(fmt.Sprintf(":%d", serverPort))
 	}(eh)
