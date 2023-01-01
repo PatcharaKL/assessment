@@ -19,8 +19,7 @@ func healthHandler(c echo.Context) error {
 }
 
 func main() {
-	expenses.InitDB()
-
+	h := expenses.NewApplication(expenses.InitDB())
 	e := echo.New()
 	e.Logger.SetLevel(log.INFO)
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
@@ -34,6 +33,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	e.GET("/health", healthHandler)
+	e.POST("/expenses", h.CreateExpensesHandler)
 
 	go func() {
 		if err := e.Start(":2565"); err != nil && err != http.ErrServerClosed {
