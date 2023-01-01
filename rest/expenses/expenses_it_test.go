@@ -56,20 +56,26 @@ func TestGetExpensesByID(t *testing.T) {
 	assert.Equal(t, 79, e.Amount)
 }
 
-func seedExpenses(t *testing.T) Expenses {
+func TestUpdateExpenses(t *testing.T) {
 	var e Expenses
+
 	body := bytes.NewBufferString(`{
-		"title": "strawberry smoothie",
-		"amount": 79,
-		"note": "night market promotion discount 10 bath",
-		"tags": ["food", "beverage"]
+		"id": 1,
+		"title": "apple smoothie",
+		"amount": 89,
+		"note": "no discount",
+		"tags": ["beverage"]
 	}`)
 
-	err := request(http.MethodPost, uri("expenses"), body).Decode(&e)
-	if err != nil {
-		t.Fatal("Can't create expense: ", err)
+	res := request(http.MethodPut, uri("expenses/1"), body)
+	err := res.Decode(&e)
+
+	if assert.Nil(t, err) {
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, 1, e.ID)
+		assert.Equal(t, "apple smoothie", e.Title)
+		assert.Equal(t, 89, e.Amount)
 	}
-	return e
 }
 
 func uri(path ...string) string {
@@ -95,7 +101,6 @@ func (r *Response) Decode(v interface{}) error {
 
 func request(method, url string, body io.Reader) *Response {
 	req, _ := http.NewRequest(method, url, body)
-	req.Header.Add("Authorization", "Basic UGF0Y2hhcmE6UGFzc3dvcmQ=")
 	req.Header.Add("Content-Type", "application/json")
 	client := http.Client{}
 	res, err := client.Do(req)
@@ -117,6 +122,7 @@ func setupServer() {
 
 		e.POST("/expenses", h.CreateExpensesHandler)
 		e.GET("/expenses/:id", h.GetExpensesByIdHandler)
+		e.PUT("/expenses/:id", h.UpdateExpensesHandler)
 		e.Start(fmt.Sprintf(":%d", serverPort))
 	}(eh)
 	for {
