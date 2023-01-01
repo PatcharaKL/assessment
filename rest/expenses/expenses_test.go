@@ -38,12 +38,13 @@ func TestCreateExpense(t *testing.T) {
 	defer db.Close()
 
 	// Set up mock rows to return when querying
-	mockRows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
-		AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"}))
+	expectedID := 1
+	expectedRow := sqlmock.NewRows([]string{"id"}).
+		AddRow(expectedID)
 
 	// Set up mock to expect a query and return mock rows
-	mock.ExpectQuery("INSERT INTO expenses").WithArgs("strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).WillReturnRows(mockRows)
-	h := handler{db}
+	mock.ExpectQuery("INSERT INTO expenses").WithArgs("strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).WillReturnRows(expectedRow)
+	h := handler{DB: db}
 	expected := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
 
 	// Act
