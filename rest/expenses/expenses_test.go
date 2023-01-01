@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateExpense(t *testing.T) {
+func TestCreateExpenseU(t *testing.T) {
 	// Arrange
 	e := echo.New()
 	body := bytes.NewBufferString(`{
@@ -58,7 +58,7 @@ func TestCreateExpense(t *testing.T) {
 	}
 }
 
-func TestGetExpenseByID(t *testing.T) {
+func TestGetExpenseByIDU(t *testing.T) {
 	// Arrange
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/expenses/1", strings.NewReader(""))
@@ -95,7 +95,7 @@ func TestGetExpenseByID(t *testing.T) {
 	}
 }
 
-func TestUpdateExpense(t *testing.T) {
+func TestUpdateExpenseU(t *testing.T) {
 	// Arrange
 	e := echo.New()
 	body := bytes.NewBufferString(`{
@@ -139,7 +139,7 @@ func TestUpdateExpense(t *testing.T) {
 	}
 }
 
-func TestGetExpenses(t *testing.T) {
+func TestGetExpensesU(t *testing.T) {
 	// Arrange
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/expenses1", strings.NewReader(""))

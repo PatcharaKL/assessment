@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package expenses
 
 import (
@@ -22,7 +25,7 @@ func init() {
 	setupServer()
 }
 
-func TestCreateExpenses(t *testing.T) {
+func TestCreateExpenseIn(t *testing.T) {
 	var e Expenses
 	body := bytes.NewBufferString(`{
 		"title": "strawberry smoothie",
@@ -40,7 +43,19 @@ func TestCreateExpenses(t *testing.T) {
 	assert.Equal(t, 79, e.Amount)
 }
 
-func TestGetExpenseByID(t *testing.T) {
+func TestGetExpensesIn(t *testing.T) {
+	var e []Expenses
+
+	res := request(http.MethodGet, uri("expenses"), strings.NewReader(""))
+	err := res.Decode(&e)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, 1, e[0].ID)
+	assert.Equal(t, "strawberry smoothie", e[0].Title)
+	assert.Equal(t, 79, e[0].Amount)
+}
+
+func TestGetExpenseByIDIn(t *testing.T) {
 	var e Expenses
 
 	res := request(http.MethodGet, uri("expenses/1"), strings.NewReader(""))
@@ -53,19 +68,7 @@ func TestGetExpenseByID(t *testing.T) {
 	assert.Equal(t, 79, e.Amount)
 }
 
-func TestGetExpenses(t *testing.T) {
-	var e []Expenses
-
-	res := request(http.MethodGet, uri("expenses"), strings.NewReader(""))
-	err := res.Decode(&e)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.Equal(t, 1, e[0].ID)
-	assert.Equal(t, "strawberry smoothie", e[0].Title)
-	assert.Equal(t, 79, e[0].Amount)
-}
-
-func TestUpdateExpenses(t *testing.T) {
+func TestUpdateExpenseIn(t *testing.T) {
 	var e Expenses
 
 	body := bytes.NewBufferString(`{
