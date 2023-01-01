@@ -78,22 +78,6 @@ func TestUpdateExpenses(t *testing.T) {
 	}
 }
 
-// func seedExpenses(t *testing.T) Expenses {
-// 	var e Expenses
-// 	body := bytes.NewBufferString(`{
-// 		"title": "strawberry smoothie",
-// 		"amount": 79,
-// 		"note": "night market promotion discount 10 bath",
-// 		"tags": ["food", "beverage"]
-// 	}`)
-
-// 	err := request(http.MethodPost, uri("expenses"), body).Decode(&e)
-// 	if err != nil {
-// 		t.Fatal("Can't create expense: ", err)
-// 	}
-// 	return e
-// }
-
 func uri(path ...string) string {
 	host := "http://localhost:80"
 	if path == nil {
