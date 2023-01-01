@@ -24,18 +24,19 @@ func main() {
 	h := expenses.NewApplication(db)
 	e := echo.New()
 	e.Logger.SetLevel(log.INFO)
+
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == "Patchara" && password == "Password" {
 			return true, nil
 		}
 		return false, nil
 	}))
-
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
 	e.GET("/health", healthHandler)
-	e.GET("/expenses/:id", h.GetExpensesByIdHandler)
+	e.GET("/expenses", h.GetExpensesHandler)
+	e.GET("/expenses/:id", h.GetExpenseByIdHandler)
 	e.PUT("/expenses/:id", h.UpdateExpensesHandler)
 	e.POST("/expenses", h.CreateExpensesHandler)
 

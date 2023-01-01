@@ -85,7 +85,7 @@ func TestGetExpenseByID(t *testing.T) {
 	expected := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
 
 	// Act
-	err = h.GetExpensesByIdHandler(c)
+	err = h.GetExpenseByIdHandler(c)
 
 	// Assertions
 	fmt.Println(strings.TrimSpace(rec.Body.String()))
@@ -130,6 +130,41 @@ func TestUpdateExpense(t *testing.T) {
 
 	// Act
 	err = h.UpdateExpensesHandler(c)
+
+	// Assertions
+	fmt.Println(strings.TrimSpace(rec.Body.String()))
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
+	}
+}
+
+func TestGetExpenses(t *testing.T) {
+	// Arrange
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/expenses1", strings.NewReader(""))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	// Set up mock rows to return when querying
+	expectedRow := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
+		AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).
+		AddRow(2, "apple smoothie", 89, "no discount", pq.Array([]string{"beverage"}))
+
+	// Set up mock to expect a query and return mock rows
+	mock.ExpectPrepare("SELECT \\* FROM expenses").ExpectQuery().WillReturnRows(expectedRow)
+	h := handler{db}
+	expected := "[{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]},{\"id\":2,\"title\":\"apple smoothie\",\"amount\":89,\"note\":\"no discount\",\"tags\":[\"beverage\"]}]"
+
+	// Act
+	err = h.GetExpensesHandler(c)
 
 	// Assertions
 	fmt.Println(strings.TrimSpace(rec.Body.String()))
