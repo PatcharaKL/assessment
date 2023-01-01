@@ -19,7 +19,9 @@ func healthHandler(c echo.Context) error {
 }
 
 func main() {
-	h := expenses.NewApplication(expenses.InitDB())
+	db := expenses.InitDB()
+	defer db.Close()
+	h := expenses.NewApplication(db)
 	e := echo.New()
 	e.Logger.SetLevel(log.INFO)
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
