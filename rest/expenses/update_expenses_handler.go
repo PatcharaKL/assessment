@@ -7,15 +7,15 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *handler) UpdateExpensesHandler(c echo.Context) error {
+func (h *Handler) UpdateExpensesHandler(c echo.Context) error {
 	id := c.Param("id")
 	e := Expenses{}
-	err := c.Bind(&e)
-	if err != nil {
+
+	if err := c.Bind(&e); err != nil {
 		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
 	}
 
-	stmt, err := h.DB.Prepare("UPDATE expenses SET title = $2, amount = $3, note = $4, tags = $5 WHERE id = $1")
+	stmt, err := h.DB.Prepare(updateExpenseSQL)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare update expense statement:" + err.Error()})
 	}

@@ -44,7 +44,7 @@ func TestCreateExpenseU(t *testing.T) {
 
 	// Set up mock to expect a query and return mock rows
 	mock.ExpectQuery("INSERT INTO expenses").WithArgs("strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).WillReturnRows(expectedRow)
-	h := handler{db}
+	h := Handler{db}
 	expected := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
 
 	// Act
@@ -81,7 +81,7 @@ func TestGetExpenseByIDU(t *testing.T) {
 
 	// Set up mock to expect a query and return mock rows
 	mock.ExpectQuery("SELECT \\* FROM expenses WHERE id = \\$1").WithArgs("1").WillReturnRows(expectedRow)
-	h := handler{db}
+	h := Handler{db}
 	expected := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
 
 	// Act
@@ -125,7 +125,7 @@ func TestUpdateExpenseU(t *testing.T) {
 
 	// Set up mock to expect a query and return mock rows
 	mock.ExpectPrepare("UPDATE expenses SET (.+) WHERE (.+)").ExpectExec().WithArgs("1", "apple smoothie", 89, "no discount", pq.Array([]string{"beverage"})).WillReturnResult(sqlmock.NewResult(0, 0))
-	h := handler{db}
+	h := Handler{db}
 	expected := "{\"id\":1,\"title\":\"apple smoothie\",\"amount\":89,\"note\":\"no discount\",\"tags\":[\"beverage\"]}"
 
 	// Act
@@ -160,7 +160,7 @@ func TestGetExpensesU(t *testing.T) {
 
 	// Set up mock to expect a query and return mock rows
 	mock.ExpectPrepare("SELECT \\* FROM expenses").ExpectQuery().WillReturnRows(expectedRow)
-	h := handler{db}
+	h := Handler{db}
 	expected := "[{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]},{\"id\":2,\"title\":\"apple smoothie\",\"amount\":89,\"note\":\"no discount\",\"tags\":[\"beverage\"]}]"
 
 	// Act
