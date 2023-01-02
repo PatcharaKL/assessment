@@ -9,13 +9,12 @@ import (
 
 func (h *Handler) CreateExpensesHandler(c echo.Context) error {
 	e := Expenses{}
-	err := c.Bind(&e)
-	if err != nil {
+
+	if err := c.Bind(&e); err != nil {
 		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
 	}
 
-	err = h.DB.QueryRow("INSERT INTO expenses (title, amount, note, tags) values ($1, $2, $3, $4) RETURNING id", e.Title, e.Amount, e.Note, pq.Array(e.Tags)).Scan(&e.ID)
-	if err != nil {
+	if err := h.DB.QueryRow(createExpenseSQL, e.Title, e.Amount, e.Note, pq.Array(e.Tags)).Scan(&e.ID); err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})
 	}
 
