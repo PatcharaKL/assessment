@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package expenses
 
 import (
@@ -125,18 +122,10 @@ func setupServer() {
 	// Setup server
 	eh := echo.New()
 	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", "postgresql://root:root@db/go-example-db?sslmode=disable")
-		if err != nil {
-			log.Fatal(err)
-		}
+		db := initTestDatabase()
 
-		h := NewApplication(db)
+		testsEndpoint(e, NewApplication(db))
 
-		e.POST("/expenses", h.CreateExpensesHandler)
-		e.GET("/expenses", h.GetExpensesHandler)
-		e.GET("/expenses/:id", h.GetExpenseByIdHandler)
-		e.PUT("/expenses/:id", h.UpdateExpensesHandler)
-		e.Start(fmt.Sprintf(":%d", serverPort))
 	}(eh)
 	for {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
@@ -148,4 +137,20 @@ func setupServer() {
 			break
 		}
 	}
+}
+
+func testsEndpoint(e *echo.Echo, h *Handler) {
+	e.POST("/expenses", h.CreateExpensesHandler)
+	e.GET("/expenses", h.GetExpensesHandler)
+	e.GET("/expenses/:id", h.GetExpenseByIdHandler)
+	e.PUT("/expenses/:id", h.UpdateExpensesHandler)
+	e.Start(fmt.Sprintf(":%d", serverPort))
+}
+
+func initTestDatabase() *sql.DB {
+	db, err := sql.Open("postgres", "postgresql://root:root@db/go-example-db?sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
 }
