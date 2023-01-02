@@ -17,14 +17,14 @@ import (
 func healthHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, "OK")
 }
+func authenticationHandler(username, password string, c echo.Context) (bool, error) {
+	if username == "Patchara" && password == "Password" {
+		return true, nil
+	}
+	return false, nil
+}
 
-func main() {
-	db := expenses.InitDB()
-	defer db.Close()
-	h := expenses.NewApplication(db)
-	e := echo.New()
-	e.Logger.SetLevel(log.INFO)
-
+func middlewareHandler(e *echo.Echo) {
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == "Patchara" && password == "Password" {
 			return true, nil
@@ -33,12 +33,26 @@ func main() {
 	}))
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+}
 
+func endpointHandler(e *echo.Echo, h *expenses.Handler) {
 	e.GET("/health", healthHandler)
 	e.GET("/expenses", h.GetExpensesHandler)
 	e.GET("/expenses/:id", h.GetExpenseByIdHandler)
 	e.PUT("/expenses/:id", h.UpdateExpensesHandler)
 	e.POST("/expenses", h.CreateExpensesHandler)
+}
+
+func main() {
+	db := expenses.InitDB()
+	defer db.Close()
+
+	e := echo.New()
+	e.Logger.SetLevel(log.INFO)
+
+	middlewareHandler(e)
+
+	endpointHandler(e, expenses.NewApplication(db))
 
 	go func() {
 		if err := e.Start(":2565"); err != nil && err != http.ErrServerClosed {
