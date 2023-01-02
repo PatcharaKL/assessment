@@ -17,6 +17,7 @@ import (
 func healthHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, "OK")
 }
+
 func authenticationHandler(username, password string, c echo.Context) (bool, error) {
 	if username == "Patchara" && password == "Password" {
 		return true, nil
@@ -25,12 +26,7 @@ func authenticationHandler(username, password string, c echo.Context) (bool, err
 }
 
 func middlewareHandler(e *echo.Echo) {
-	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
-		if username == "Patchara" && password == "Password" {
-			return true, nil
-		}
-		return false, nil
-	}))
+	e.Use(middleware.BasicAuth(authenticationHandler))
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 }
