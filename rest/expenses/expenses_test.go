@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setUpTestServer(method, uri string, body *bytes.Buffer) (*httptest.ResponseRecorder, echo.Context) {
+func setupTestServer(method, uri string, body *bytes.Buffer) (*httptest.ResponseRecorder, echo.Context) {
 	e := echo.New()
 	req := httptest.NewRequest(method, uri, body)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -69,7 +69,7 @@ func TestCreateExpenseU(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			rec, c := setUpTestServer(http.MethodPost, "/expenses", tt.body)
+			rec, c := setupTestServer(http.MethodPost, "/expenses", tt.body)
 
 			db, mock, err := sqlmock.New()
 			if err != nil {
@@ -123,7 +123,7 @@ func TestGetExpenseByIDU(t *testing.T) {
 	}
 	for _, tt := range tests {
 		// Arrange
-		rec, c := setUpTestServer(http.MethodGet, "/expenses", bytes.NewBufferString(``))
+		rec, c := setupTestServer(http.MethodGet, "/expenses", bytes.NewBufferString(``))
 		c.SetPath("/expenses/:id")
 		c.SetParamNames("id")
 		c.SetParamValues("1")
@@ -201,36 +201,105 @@ func TestUpdateExpenseU(t *testing.T) {
 }
 
 func TestGetExpensesU(t *testing.T) {
-	// Arrange
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/expenses1", strings.NewReader(""))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	successRes := "[{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]},{\"id\":2,\"title\":\"apple smoothie\",\"amount\":89,\"note\":\"no discount\",\"tags\":[\"beverage\"]}]"
+	prepareStmtErrorRes := "{\"message\":\"can't prepare query all expenses statement:all expectations were already fulfilled, call to Prepare 'SELECT * FROM expenses' query was not expected\"}"
+	queryStmtErrorRes := "{\"message\":\"can't query expenses: all expectations were already fulfilled, call to Query 'SELECT * FROM expenses' with args [] was not expected\"}"
+	scanErrorRes := "{\"message\":\"can't scan user:sql: Scan error on column index 4, name \\\"tags\\\": pq: unable to parse array; expected '{' at offset 0\"}"
 
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	tests := []struct {
+		name         string
+		expectedRes  string
+		expectedCode int
+	}{
+		{
+			name:         "testSucceed",
+			expectedRes:  successRes,
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "testPrepareStmtError",
+			expectedRes:  prepareStmtErrorRes,
+			expectedCode: http.StatusInternalServerError,
+		},
+		{
+			name:         "testQueryStmtError",
+			expectedRes:  queryStmtErrorRes,
+			expectedCode: http.StatusInternalServerError,
+		},
+		{
+			name:         "testScanError",
+			expectedRes:  scanErrorRes,
+			expectedCode: http.StatusInternalServerError,
+		},
 	}
-	defer db.Close()
+	for _, tt := range tests {
+		// Arrange
+		rec, c := setupTestServer(http.MethodGet, "/expenses", bytes.NewBufferString(``))
 
-	// Set up mock rows to return when querying
-	expectedRow := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
-		AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).
-		AddRow(2, "apple smoothie", 89, "no discount", pq.Array([]string{"beverage"}))
+		db, mock, err := sqlmock.New()
+		if err != nil {
+			t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+		}
+		defer db.Close()
 
-	// Set up mock to expect a query and return mock rows
-	mock.ExpectPrepare("SELECT \\* FROM expenses").ExpectQuery().WillReturnRows(expectedRow)
-	h := Handler{db}
-	expected := "[{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]},{\"id\":2,\"title\":\"apple smoothie\",\"amount\":89,\"note\":\"no discount\",\"tags\":[\"beverage\"]}]"
+		// Set up mock rows to return when querying
+		var expectedRow *sqlmock.Rows
+		if tt.name != "testScanError" {
+			expectedRow = sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
+				AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).
+				AddRow(2, "apple smoothie", 89, "no discount", pq.Array([]string{"beverage"}))
+		} else {
+			expectedRow = sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
+				AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", "food").
+				AddRow(2, "apple smoothie", 89, "no discount", pq.Array([]string{"beverage"}))
+		}
+		if tt.name != "testPrepareStmtError" {
+			// Set up mock to expect a query and return mock rows
+			expectedPrepare := mock.ExpectPrepare("SELECT \\* FROM expenses")
+			if tt.name != "testQueryStmtError" {
+				expectedPrepare.ExpectQuery().WillReturnRows(expectedRow)
+			}
+		}
+		h := Handler{db}
 
-	// Act
-	err = h.GetExpensesHandler(c)
+		// Act
+		err = h.GetExpensesHandler(c)
 
-	// Assertions
-	fmt.Println(strings.TrimSpace(rec.Body.String()))
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
+		// Assertions
+		fmt.Println(strings.TrimSpace(rec.Body.String()))
+		if assert.NoError(t, err) {
+			assert.Equal(t, tt.expectedCode, rec.Code)
+			assert.Equal(t, tt.expectedRes, strings.TrimSpace(rec.Body.String()))
+		}
 	}
+
+	// // Arrange
+	// rec, c := setupTestServer(http.MethodGet, "/expenses", bytes.NewBufferString(``))
+
+	// db, mock, err := sqlmock.New()
+	// if err != nil {
+	// 	t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	// }
+	// defer db.Close()
+
+	// // Set up mock rows to return when querying
+	// expectedRow := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
+	// 	AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).
+	// 	AddRow(2, "apple smoothie", 89, "no discount", pq.Array([]string{"beverage"}))
+
+	// // Set up mock to expect a query and return mock rows
+	// expectedPrepare := mock.ExpectPrepare("SELECT \\* FROM expenses")
+	// expectedPrepare.ExpectQuery().WillReturnRows(expectedRow)
+	// h := Handler{db}
+	// expected := "[{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]},{\"id\":2,\"title\":\"apple smoothie\",\"amount\":89,\"note\":\"no discount\",\"tags\":[\"beverage\"]}]"
+
+	// // Act
+	// err = h.GetExpensesHandler(c)
+
+	// // Assertions
+	// fmt.Println(strings.TrimSpace(rec.Body.String()))
+	// if assert.NoError(t, err) {
+	// 	assert.Equal(t, http.StatusOK, rec.Code)
+	// 	assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
+	// }
 }
