@@ -14,6 +14,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func setUpTestServer(method, uri string, body *bytes.Buffer) (*httptest.ResponseRecorder, echo.Context) {
+	e := echo.New()
+	req := httptest.NewRequest(method, uri, body)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	return rec, c
+}
 func TestCreateExpenseU(t *testing.T) {
 	successRes := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
 	badRequestRes := "{\"message\":\"code=400, message=Syntax error: offset=115, error=invalid character '}' looking for beginning of object key string, internal=invalid character '}' looking for beginning of object key string\"}"
@@ -61,11 +69,7 @@ func TestCreateExpenseU(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			e := echo.New()
-			req := httptest.NewRequest(http.MethodPost, "/expenses", tt.body)
-			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
+			rec, c := setUpTestServer(http.MethodPost, "/expenses", tt.body)
 
 			db, mock, err := sqlmock.New()
 			if err != nil {
@@ -98,39 +102,57 @@ func TestCreateExpenseU(t *testing.T) {
 }
 
 func TestGetExpenseByIDU(t *testing.T) {
-	// Arrange
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/expenses/1", strings.NewReader(""))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	c.SetPath("/expenses/:id")
-	c.SetParamNames("id")
-	c.SetParamValues("1")
+	successRes := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
+	InternalServerErrorRes := "{\"message\":\"all expectations were already fulfilled, call to Query 'SELECT * FROM expenses WHERE id = $1' with args [{Name: Ordinal:1 Value:1}] was not expected\"}"
 
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	tests := []struct {
+		name         string
+		expectedRes  string
+		expectedCode int
+	}{
+		{
+			name:         "testSucceed",
+			expectedRes:  successRes,
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "testInternalServerError",
+			expectedRes:  InternalServerErrorRes,
+			expectedCode: http.StatusInternalServerError,
+		},
 	}
-	defer db.Close()
+	for _, tt := range tests {
+		// Arrange
+		rec, c := setUpTestServer(http.MethodGet, "/expenses", bytes.NewBufferString(``))
+		c.SetPath("/expenses/:id")
+		c.SetParamNames("id")
+		c.SetParamValues("1")
 
-	// Set up mock rows to return when querying
-	expectedRow := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
-		AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"}))
+		db, mock, err := sqlmock.New()
+		if err != nil {
+			t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+		}
+		defer db.Close()
 
-	// Set up mock to expect a query and return mock rows
-	mock.ExpectQuery("SELECT \\* FROM expenses WHERE id = \\$1").WithArgs("1").WillReturnRows(expectedRow)
-	h := Handler{db}
-	expected := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
+		// Set up mock rows to return when querying
+		expectedRow := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
+			AddRow(1, "strawberry smoothie", 79, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"}))
 
-	// Act
-	err = h.GetExpenseByIdHandler(c)
+		// Set up mock to expect a query and return mock rows
+		if tt.name != "testInternalServerError" {
+			mock.ExpectQuery("SELECT \\* FROM expenses WHERE id = \\$1").WithArgs("1").WillReturnRows(expectedRow)
+		}
+		h := Handler{db}
 
-	// Assertions
-	fmt.Println(strings.TrimSpace(rec.Body.String()))
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
+		// Act
+		err = h.GetExpenseByIdHandler(c)
+
+		// Assertions
+		fmt.Println(strings.TrimSpace(rec.Body.String()))
+		if assert.NoError(t, err) {
+			assert.Equal(t, tt.expectedCode, rec.Code)
+			assert.Equal(t, tt.expectedRes, strings.TrimSpace(rec.Body.String()))
+		}
 	}
 }
 
