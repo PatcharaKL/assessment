@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package expenses
 
 import (
@@ -37,7 +40,7 @@ func TestCreateExpenseIn(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 	assert.NotEqual(t, 0, e.ID)
 	assert.Equal(t, "strawberry smoothie", e.Title)
-	assert.Equal(t, 79, e.Amount)
+	assert.Equal(t, 79.00, e.Amount)
 }
 
 func TestGetExpensesIn(t *testing.T) {
@@ -49,7 +52,7 @@ func TestGetExpensesIn(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Equal(t, 1, e[0].ID)
 	assert.Equal(t, "strawberry smoothie", e[0].Title)
-	assert.Equal(t, 79, e[0].Amount)
+	assert.Equal(t, 79.00, e[0].Amount)
 }
 
 func TestGetExpenseByIDIn(t *testing.T) {
@@ -62,7 +65,7 @@ func TestGetExpenseByIDIn(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Equal(t, 1, e.ID)
 	assert.Equal(t, "strawberry smoothie", e.Title)
-	assert.Equal(t, 79, e.Amount)
+	assert.Equal(t, 79.00, e.Amount)
 }
 
 func TestUpdateExpenseIn(t *testing.T) {
@@ -83,7 +86,7 @@ func TestUpdateExpenseIn(t *testing.T) {
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Equal(t, 1, e.ID)
 		assert.Equal(t, "apple smoothie", e.Title)
-		assert.Equal(t, 89, e.Amount)
+		assert.Equal(t, 89.00, e.Amount)
 	}
 }
 
@@ -119,14 +122,13 @@ func request(method, url string, body io.Reader) *Response {
 const serverPort = 80
 
 func setupServer() {
-	// Setup server
 	eh := echo.New()
+
 	go func(e *echo.Echo) {
 		db := initTestDatabase()
-
 		testsEndpoint(e, NewApplication(db))
-
 	}(eh)
+
 	for {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
 		if err != nil {
