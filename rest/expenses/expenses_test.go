@@ -15,43 +15,85 @@ import (
 )
 
 func TestCreateExpenseU(t *testing.T) {
-	// Arrange
-	e := echo.New()
-	body := bytes.NewBufferString(`{
+	successRes := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
+	badRequestRes := "{\"message\":\"code=400, message=Syntax error: offset=115, error=invalid character '}' looking for beginning of object key string, internal=invalid character '}' looking for beginning of object key string\"}"
+	InternalServerErrorRes := "{\"message\":\"all expectations were already fulfilled, call to Query 'INSERT INTO expenses (title, amount, note, tags) values ($1, $2, $3, $4) RETURNING id;' with args [{Name: Ordinal:1 Value:strawberry smoothie} {Name: Ordinal:2 Value:79} {Name: Ordinal:3 Value:night market promotion discount 10 bath} {Name: Ordinal:4 Value:{\\\"food\\\",\\\"beverage\\\"}}] was not expected\"}"
+
+	tests := []struct {
+		name         string
+		body         *bytes.Buffer
+		expectedRes  string
+		expectedCode int
+	}{
+		{
+			name: "testSucceed",
+			body: bytes.NewBufferString(`{
 				"title": "strawberry smoothie",
 				"amount": 79,
 				"note": "night market promotion discount 10 bath",
 				"tags": ["food", "beverage"]
-			}`)
-	req := httptest.NewRequest(http.MethodPost, "/expenses", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+			}`),
+			expectedRes:  successRes,
+			expectedCode: http.StatusCreated,
+		},
+		{
+			name: "testBadRequest",
+			body: bytes.NewBufferString(`{
+				"title": "strawberry smoothie",
+				"amount": 79,
+				"note": "night market promotion discount 10 bath",
+			}`),
+			expectedRes:  badRequestRes,
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name: "testInternalServerError",
+			body: bytes.NewBufferString(`{
+				"title": "strawberry smoothie",
+				"amount": 79,
+				"note": "night market promotion discount 10 bath",
+				"tags": ["food", "beverage"]
+			}`),
+			expectedRes:  InternalServerErrorRes,
+			expectedCode: http.StatusInternalServerError,
+		},
 	}
-	defer db.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodPost, "/expenses", tt.body)
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-	// Set up mock rows to return when querying
-	expectedID := 1
-	expectedRow := sqlmock.NewRows([]string{"id"}).
-		AddRow(expectedID)
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+			}
+			defer db.Close()
 
-	// Set up mock to expect a query and return mock rows
-	mock.ExpectQuery("INSERT INTO expenses").WithArgs("strawberry smoothie", 79.00, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).WillReturnRows(expectedRow)
-	h := Handler{db}
-	expected := "{\"id\":1,\"title\":\"strawberry smoothie\",\"amount\":79,\"note\":\"night market promotion discount 10 bath\",\"tags\":[\"food\",\"beverage\"]}"
+			// Set up mock rows to return when querying
+			expectedID := 1
+			expectedRow := sqlmock.NewRows([]string{"id"}).
+				AddRow(expectedID)
 
-	// Act
-	err = h.CreateExpensesHandler(c)
+			// Set up mock to expect a query and return mock rows
+			if tt.name != "testInternalServerError" {
+				mock.ExpectQuery("INSERT INTO expenses").WithArgs("strawberry smoothie", 79.00, "night market promotion discount 10 bath", pq.Array([]string{"food", "beverage"})).WillReturnRows(expectedRow)
+			}
+			h := Handler{db}
 
-	// Assertions
-	fmt.Println(strings.TrimSpace(rec.Body.String()))
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
+			// Act
+			err = h.CreateExpensesHandler(c)
+
+			// Assertions
+			fmt.Println(strings.TrimSpace(rec.Body.String()))
+			if assert.NoError(t, err) {
+				assert.Equal(t, tt.expectedCode, rec.Code)
+				assert.Equal(t, tt.expectedRes, strings.TrimSpace(rec.Body.String()))
+			}
+		})
 	}
 }
 
